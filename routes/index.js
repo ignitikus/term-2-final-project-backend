@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios')
+const Picture = require('./models/Picture')
 
 const testPic = {
 "picture": {
@@ -97,7 +98,20 @@ router.get('/randompic', async(req,res,next) => {
   } catch (error) {
     console.log(error)
   }
+})
 
+router.post('/savepicture', async(req,res,next) => {
+  try {
+    const newPic = new Picture()
+    newPic.status = req.body.status
+    newPic.description = req.body.description
+    newPic.urls.full = req.body.urls.full
+    newPic.urls.thumb = req.body.urls.raw
+    newPic.save().then(pic => res.json(pic))
+    
+  } catch (error) {
+    console.log(error)
+  }
 })
 
 module.exports = router;
