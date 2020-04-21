@@ -100,15 +100,32 @@ router.get('/randompic', async(req,res,next) => {
   }
 })
 
+router.get('/gallery', async(req,res,next) => {
+  try {
+    const allPictures = await Picture.find({})
+    return res.json(allPictures)
+  } catch (error) {
+    console.log(error)
+  }
+})
+
 router.post('/savepicture', async(req,res,next) => {
   try {
     const newPic = new Picture()
     newPic.status = req.body.status
     newPic.description = req.body.description
     newPic.urls.full = req.body.urls.full
-    newPic.urls.thumb = req.body.urls.raw
+    newPic.urls.thumb = req.body.urls.thumb
     newPic.save().then(pic => res.json(pic))
     
+  } catch (error) {
+    console.log(error)
+  }
+})
+
+router.put('/updatestatus', async(req,res,next) => {
+  try {
+    await Picture.findOneAndUpdate({_id: req.body.id}, {status: !req.body.status})
   } catch (error) {
     console.log(error)
   }
