@@ -131,4 +131,12 @@ router.put('/updatestatus', async(req,res,next) => {
   }
 })
 
+router.delete('/deletepicture/:id', async(req,res,next) => {
+  try {
+    await Picture.deleteOne({_id: req.params.id})
+  } catch (error) {
+    console.log(error)
+  }
+})
+
 module.exports = router;
