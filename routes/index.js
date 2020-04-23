@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios')
 const jwt = require('jsonwebtoken')
+const faker = require('faker')
 const User = require('./models/User')
 const Picture = require('./models/Picture')
+const bcrypt = require('bcryptjs')
 
 const testPic = {
 "picture": {
@@ -88,7 +90,7 @@ const testPic = {
 }
 
 /* GET home page. */
-router.get('/info', function(req, res, next) {
+router.get('/info', (req, res, next)=> {
   return res.json({message: 'Coming from backend'})
 });
 
@@ -102,10 +104,16 @@ router.get('/randompic', async(req,res,next) => {
   }
 })
 
-router.get('/gallery', async(req,res,next) => {
+router.get('/gallery/:token', async(req,res,next) => {
   try {
-    const allPictures = await Picture.find({})
-    return res.json(allPictures)
+    await jwt.verify(req.params.token, process.env.JWT_SECRET, async(err, {user}) => {
+      if(err){
+        return res.json(err)
+      }
+      const allPictures = await Picture.find({owner: user._id})
+      return res.json(allPictures)
+    })
+
   } catch (error) {
     console.log(error)
   }
@@ -113,12 +121,20 @@ router.get('/gallery', async(req,res,next) => {
 
 router.post('/savepicture', async(req,res,next) => {
   try {
-    const newPic = new Picture()
-    newPic.status = req.body.status
-    newPic.description = req.body.description
-    newPic.urls.full = req.body.urls.full
-    newPic.urls.thumb = req.body.urls.thumb
-    newPic.save().then(pic => res.json(pic))
+    await jwt.verify(req.body.token, process.env.JWT_SECRET, async(err, {user}) => {
+      if(err){
+        return res.json(err)
+      }
+      const foundUser = await User.findOne({email: user.email})
+      if(!foundUser) return res.json('No user found')
+      const newPic = new Picture()
+      newPic.owner = foundUser._id
+      newPic.status = req.body.status
+      newPic.description = req.body.description
+      newPic.urls.full = req.body.urls.full
+      newPic.urls.thumb = req.body.urls.thumb
+      newPic.save().then(pic => res.json(pic))
+    })
     
   } catch (error) {
     console.log(error)
@@ -127,37 +143,37 @@ router.post('/savepicture', async(req,res,next) => {
 
 router.post('/login', async(req,res,next) => {
   const user = await User.findOne({email: req.body.email})
-  if(!user){
-      res.json({message:'User not found'})
+  if(user){
+    const passCheck = await bcrypt.compare(req.body.pass, user.password)
+    if(!passCheck){
+      return res.json({message: 'check credentials'})
+    }else{
+      jwt.sign({user}, process.env.JWT_SECRET, /*{ expiresIn: '10000' },*/ (err, token) => {
+        res.json({message:'Success', token, email: user.email, avatar: user.avatar})
+      })
+    }
   }else{
-    jwt.sign({user}, 'secretKey', (err, token) => {
-      res.json({message:'Success', token, email: user.email, avatar: user.avatar})
-    })
+    return res.json({message:'User not found'})
   }
 })
 
-router.post('/register', (req,res,next) => {
-    User.findOne({email:req.body.email }).then(user=>{
-        if(user) {
-          res.json('already exists')
-        }
+router.post('/register', async(req,res,next) => {
+  try {
+    const user = await User.findOne({email:req.body.email })
+    if(user) return res.json({message: 'already exists'})
+    const newUser = new User
+    newUser.avatar = faker.image.avatar()
+    newUser.email = req.body.email
+    newUser.password = req.body.pass
 
-        const newUser = new User
-
-        newUser.avatar = 'https://www.w3schools.com/w3images/avatar2.png'
-        newUser.email = req.body.email
-        newUser.password = req.body.password
-
-        newUser.save().then(user=>{
-          // if(user) return req.login(user, (err) => {
-              if(err){
-                return res.json('couldn\'t save')
-              }
-              return console.log(user)
-          })
-        // }).catch(err=> next(err))
-    }).catch(err=> next(err))
-  },
+    newUser.save().then(user=>{
+      jwt.sign({user}, process.env.JWT_SECRET, /*{ expiresIn: '10000' },*/ (err, token) => {
+        res.json({message:'Success', token, email: user.email, avatar: user.avatar})
+      })
+    })
+  } catch (error) {
+    console.log(error)
+  }},
 )
 
 router.put('/updatestatus', async(req,res,next) => {
