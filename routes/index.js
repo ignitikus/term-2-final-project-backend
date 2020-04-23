@@ -127,11 +127,13 @@ router.post('/savepicture', async(req,res,next) => {
 
 router.post('/login', async(req,res,next) => {
   const user = await User.findOne({email: req.body.email})
-  console.log(user)
-
-  jwt.sign({user}, 'secretKey', (err, token) => {
-    res.json({token})
-  })
+  if(!user){
+      res.json({message:'User not found'})
+  }else{
+    jwt.sign({user}, 'secretKey', (err, token) => {
+      res.json({message:'Success', token, email: user.email, avatar: user.avatar})
+    })
+  }
 })
 
 router.post('/register', (req,res,next) => {
