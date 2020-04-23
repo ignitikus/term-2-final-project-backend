@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios')
+const jwt = require('jsonwebtoken')
+const User = require('./models/User')
 const Picture = require('./models/Picture')
 
 const testPic = {
@@ -122,6 +124,39 @@ router.post('/savepicture', async(req,res,next) => {
     console.log(error)
   }
 })
+
+router.post('/login', async(req,res,next) => {
+  const user = await User.findOne({email: req.body.email})
+  console.log(user)
+
+  jwt.sign({user}, 'secretKey', (err, token) => {
+    res.json({token})
+  })
+})
+
+router.post('/register', (req,res,next) => {
+    User.findOne({email:req.body.email }).then(user=>{
+        if(user) {
+          res.json('already exists')
+        }
+
+        const newUser = new User
+
+        newUser.avatar = 'https://www.w3schools.com/w3images/avatar2.png'
+        newUser.email = req.body.email
+        newUser.password = req.body.password
+
+        newUser.save().then(user=>{
+          // if(user) return req.login(user, (err) => {
+              if(err){
+                return res.json('couldn\'t save')
+              }
+              return console.log(user)
+          })
+        // }).catch(err=> next(err))
+    }).catch(err=> next(err))
+  },
+)
 
 router.put('/updatestatus', async(req,res,next) => {
   try {
